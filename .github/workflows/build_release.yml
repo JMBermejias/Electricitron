@@ -1,0 +1,149 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.0.0)'
+        required: true
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+      - name: Build Windows EXE
+        run: python build_windows.py
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-exe
+          path: dist/Electricitron.exe
+          retention-days: 5
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+      - name: Install dpkg-deb
+        run: sudo apt-get update && sudo apt-get install -y dpkg-dev
+      - name: Build Linux DEB
+        run: python build_linux.py
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-deb
+          path: electricitron_*.deb
+          retention-days: 5
+
+  build-appimage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+      - name: Build AppImage
+        run: |
+          python -m PyInstaller \
+            --name=electricitron \
+            --windowed \
+            --onefile \
+            --icon=assets/icon.png \
+            --add-data=assets:assets \
+            --clean --noconfirm \
+            electricitron/main.py
+          chmod +x dist/electricitron
+      - name: Create AppDir
+        run: |
+          mkdir -p AppDir/usr/bin AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/256x256/apps
+          cp dist/electricitron AppDir/usr/bin/
+          cat > AppDir/electricitron.desktop << 'EOF'
+          [Desktop Entry]
+          Name=Electricitron
+          Comment=Software de cálculos eléctricos y telecomunicaciones
+          Exec=electricitron
+          Icon=electricitron
+          Terminal=false
+          Type=Application
+          Categories=Utility;Engineering;Education;
+          EOF
+          cp assets/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/electricitron.png 2>/dev/null || true
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-appimage
+          path: dist/electricitron
+          retention-days: 5
+
+  release:
+    needs: [build-windows, build-linux, build-appimage]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "Electricitron ${{ github.ref_name }}"
+          body: |
+            ## Electricitron ${{ github.ref_name }}
+
+            ### Cambios
+            - Versión estable con todas las funcionalidades
+
+            ### Instalación
+            - **Windows**: Descarga `Electricitron.exe`
+            - **Linux (Debian/Ubuntu)**: Descarga el `.deb` e instala con `sudo dpkg -i electricitron_*.deb`
+            - **Linux (AppImage)**: Descarga y ejecuta directamente
+
+            ### Funcionalidades
+            - Cálculos eléctricos básicos (Ley de Ohm, Potencia, Energía, Impedancia)
+            - Secciones de conductores y caída de tensión
+            - Protecciones (Interruptores, Diferenciales, Fusibles)
+            - Instalaciones eléctricas (Esquemas, Selectividad)
+            - Telecomunicaciones (Enlaces, Fibra Óptica, Redes, WiFi)
+            - Distancias y líneas eléctricas
+            - Exportación a PDF y Excel
+          files: |
+            artifacts/windows-exe/Electricitron.exe
+            artifacts/linux-deb/electricitron_*.deb
+            artifacts/linux-appimage/electricitron
+          draft: false
+          prerelease: false

@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "electricitron"
+version = "1.0.0"
+description = "Software profesional de cálculos eléctricos y telecomunicaciones"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    {name = "jmbernabeu"}
+]
+dependencies = [
+    "PyQt6>=6.5.0",
+    "reportlab>=4.0.0",
+    "openpyxl>=3.1.0",
+    "numpy>=1.24.0",
+    "scipy>=1.10.0",
+    "matplotlib>=3.7.0",
+    "Pillow>=10.0.0",
+]
+
+[project.scripts]
+electricitron = "electricitron.main:main"
+
+[project.gui-scripts]
+electricitron = "electricitron.main:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["electricitron*"]
