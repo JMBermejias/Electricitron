@@ -44,7 +44,7 @@ Version: {version}
 Section: utils
 Priority: optional
 Architecture: amd64
-Depends: libgl1-mesa-glx, libglib2.0-0, libfontconfig1, libxrender1
+Depends: libgl1, libglib2.0-0, libfontconfig1, libxrender1
 Maintainer: jmbernabeu <jmbernabeu@users.noreply.github.com>
 Description: Electricitron - Cálculos Eléctricos y Telecomunicaciones
  Software profesional para cálculos eléctricos, secciones de cables,
