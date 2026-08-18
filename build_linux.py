@@ -4,7 +4,6 @@ import subprocess
 import sys
 import os
 import shutil
-import glob
 
 
 def build_linux_deb():
@@ -17,7 +16,6 @@ def build_linux_deb():
     share_dir = f"{build_dir}/usr/share/applications"
     icon_dir = f"{build_dir}/usr/share/icons/hicolor/256x256/apps"
 
-    # Clean
     if os.path.exists("deb_build"):
         shutil.rmtree("deb_build")
     os.makedirs(bin_dir, exist_ok=True)
@@ -25,23 +23,22 @@ def build_linux_deb():
     os.makedirs(share_dir, exist_ok=True)
     os.makedirs(icon_dir, exist_ok=True)
 
-    # Build executable
     cmd = [
         sys.executable, "-m", "PyInstaller",
         "--name=electricitron",
         "--windowed",
         "--onefile",
-        "--icon=assets/icon.png",
         "--add-data=assets:assets",
         "--clean",
         "--noconfirm",
         "--distpath=deb_build/usr/bin",
         "electricitron/main.py"
     ]
+    if os.path.exists("assets/icon.png"):
+        cmd.insert(5, "--icon=assets/icon.png")
     print("Compilando ejecutable...")
     subprocess.run(cmd, check=True)
 
-    # Create DEBIAN/control
     control = f"""Package: {pkg_name}
 Version: {version}
 Section: utils
@@ -57,7 +54,6 @@ Description: Electricitron - Cálculos Eléctricos y Telecomunicaciones
     with open(f"{deb_dir}/control", "w") as f:
         f.write(control)
 
-    # Create .desktop file
     desktop = f"""[Desktop Entry]
 Name=Electricitron
 Comment=Software de cálculos eléctricos y telecomunicaciones
@@ -66,17 +62,13 @@ Icon=electricitron
 Terminal=false
 Type=Application
 Categories=Utility;Engineering;Education;
-Keywords=electricidad;electrical;calculation;
 """
     with open(f"{share_dir}/electricitron.desktop", "w") as f:
         f.write(desktop)
 
-    # Copy icon
-    icon_src = "assets/icon.png"
-    if os.path.exists(icon_src):
-        shutil.copy(icon_src, f"{icon_dir}/electricitron.png")
+    if os.path.exists("assets/icon.png"):
+        shutil.copy("assets/icon.png", f"{icon_dir}/electricitron.png")
 
-    # Build .deb
     deb_file = f"{pkg_name}_{version}_amd64.deb"
     cmd = ["dpkg-deb", "--build", build_dir, deb_file]
     subprocess.run(cmd, check=True)

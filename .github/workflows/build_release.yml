@@ -5,10 +5,6 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version to release (e.g., 1.0.0)'
-        required: true
 
 env:
   PYTHON_VERSION: '3.11'
@@ -79,26 +75,10 @@ jobs:
             --name=electricitron \
             --windowed \
             --onefile \
-            --icon=assets/icon.png \
             --add-data=assets:assets \
             --clean --noconfirm \
             electricitron/main.py
           chmod +x dist/electricitron
-      - name: Create AppDir
-        run: |
-          mkdir -p AppDir/usr/bin AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/256x256/apps
-          cp dist/electricitron AppDir/usr/bin/
-          cat > AppDir/electricitron.desktop << 'EOF'
-          [Desktop Entry]
-          Name=Electricitron
-          Comment=Software de cálculos eléctricos y telecomunicaciones
-          Exec=electricitron
-          Icon=electricitron
-          Terminal=false
-          Type=Application
-          Categories=Utility;Engineering;Education;
-          EOF
-          cp assets/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/electricitron.png 2>/dev/null || true
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -125,13 +105,10 @@ jobs:
           body: |
             ## Electricitron ${{ github.ref_name }}
 
-            ### Cambios
-            - Versión estable con todas las funcionalidades
-
-            ### Instalación
+            ### Instalacion
             - **Windows**: Descarga `Electricitron.exe`
             - **Linux (Debian/Ubuntu)**: Descarga el `.deb` e instala con `sudo dpkg -i electricitron_*.deb`
-            - **Linux (AppImage)**: Descarga y ejecuta directamente
+            - **Linux (ejecutable)**: Descarga y ejecuta directamente
 
             ### Funcionalidades
             - Cálculos eléctricos básicos (Ley de Ohm, Potencia, Energía, Impedancia)
