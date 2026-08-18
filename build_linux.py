@@ -14,17 +14,16 @@ def build_linux_deb():
     bin_dir = f"{build_dir}/usr/bin"
     deb_dir = f"{build_dir}/DEBIAN"
     share_dir = f"{build_dir}/usr/share/applications"
-    icon_dir_256 = f"{build_dir}/usr/share/icons/hicolor/256x256/apps"
-    icon_dir_128 = f"{build_dir}/usr/share/icons/hicolor/128x128/apps"
-    icon_dir_64 = f"{build_dir}/usr/share/icons/hicolor/64x64/apps"
-    icon_dir_48 = f"{build_dir}/usr/share/icons/hicolor/48x48/apps"
-    icon_dir_32 = f"{build_dir}/usr/share/icons/hicolor/32x32/apps"
-    icon_dir_16 = f"{build_dir}/usr/share/icons/hicolor/16x16/apps"
+    mime_dir = f"{build_dir}/usr/share/mime/packages"
+    icons_dir = f"{build_dir}/usr/share/icons/hicolor"
 
     if os.path.exists("deb_build"):
         shutil.rmtree("deb_build")
 
-    for d in [bin_dir, deb_dir, share_dir, icon_dir_256, icon_dir_128, icon_dir_64, icon_dir_48, icon_dir_32, icon_dir_16]:
+    dirs = [bin_dir, deb_dir, share_dir, mime_dir]
+    for size in [16, 32, 48, 64, 128, 256]:
+        dirs.append(f"{icons_dir}/{size}x{size}/apps")
+    for d in dirs:
         os.makedirs(d, exist_ok=True)
 
     cmd = [
@@ -58,39 +57,99 @@ Description: Electricitron - Calculos Electricos y Telecomunicaciones
     with open(f"{deb_dir}/control", "w") as f:
         f.write(control)
 
-    desktop = f"""[Desktop Entry]
+    postinst = """#!/bin/bash
+set -e
+
+# Update icon cache
+if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+    gtk-update-icon-cache -f -t /usr/share/icons/hicolor || true
+fi
+
+# Update desktop database
+if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database /usr/share/applications || true
+fi
+
+# Update MIME database
+if command -v update-mime-database >/dev/null 2>&1; then
+    update-mime-database /usr/share/mime || true
+fi
+
+# Make desktop file trusted on GNOME
+if command -v gio >/dev/null 2>&1; then
+    gio set /usr/share/applications/electricitron.desktop "metadata::trusted" true 2>/dev/null || true
+fi
+
+echo "Electricitron installed successfully."
+"""
+    with open(f"{deb_dir}/postinst", "w") as f:
+        f.write(postinst)
+    os.chmod(f"{deb_dir}/postinst", 0o755)
+
+    postrm = """#!/bin/bash
+set -e
+
+if [ "$1" = "remove" ] || [ "$1" = "purge" ]; then
+    if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+        gtk-update-icon-cache -f -t /usr/share/icons/hicolor || true
+    fi
+    if command -v update-desktop-database >/dev/null 2>&1; then
+        update-desktop-database /usr/share/applications || true
+    fi
+fi
+"""
+    with open(f"{deb_dir}/postrm", "w") as f:
+        f.write(postrm)
+    os.chmod(f"{deb_dir}/postrm", 0o755)
+
+    desktop = """[Desktop Entry]
 Name=Electricitron
+GenericName=Calculos Electricos
 Comment=Software de calculos electricos y telecomunicaciones
 Exec=/usr/bin/electricitron
 Icon=electricitron
 Terminal=false
 Type=Application
-Categories=Utility;Engineering;Education;
-Keywords=electricidad;electrical;calculation;
+StartupNotify=true
+Categories=Utility;Engineering;Education;Science;
+Keywords=electricidad;electrical;calculation;telecom;
+MimeType=
 """
     with open(f"{share_dir}/electricitron.desktop", "w") as f:
         f.write(desktop)
+    os.chmod(f"{share_dir}/electricitron.desktop", 0o644)
 
-    icon_mapping = {
-        "assets/icon_256.png": icon_dir_256,
-        "assets/icon_128.png": icon_dir_128,
-        "assets/icon_64.png": icon_dir_64,
-        "assets/icon_48.png": icon_dir_48,
-        "assets/icon_32.png": icon_dir_32,
-        "assets/icon_16.png": icon_dir_16,
+    mime_xml = """<?xml version="1.0" encoding="UTF-8"?>
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-electricitron-report">
+    <comment>Electricitron Report</comment>
+    <glob pattern="*.eitreport"/>
+  </mime-type>
+</mime-info>
+"""
+    with open(f"{mime_dir}/electricitron.xml", "w") as f:
+        f.write(mime_xml)
+
+    icon_files = {
+        "assets/icon_256.png": f"{icons_dir}/256x256/apps/electricitron.png",
+        "assets/icon_128.png": f"{icons_dir}/128x128/apps/electricitron.png",
+        "assets/icon_64.png": f"{icons_dir}/64x64/apps/electricitron.png",
+        "assets/icon_48.png": f"{icons_dir}/48x48/apps/electricitron.png",
+        "assets/icon_32.png": f"{icons_dir}/32x32/apps/electricitron.png",
+        "assets/icon_16.png": f"{icons_dir}/16x16/apps/electricitron.png",
     }
-    for src, dst in icon_mapping.items():
+    for src, dst in icon_files.items():
         if os.path.exists(src):
-            shutil.copy(src, f"{dst}/electricitron.png")
-            print(f"  Icon: {src} -> {dst}/electricitron.png")
-
-    if os.path.exists("assets/icon.png"):
-        shutil.copy("assets/icon.png", f"{icon_dir_256}/electricitron.png")
+            shutil.copy(src, dst)
+            print(f"  Icon: {src} -> {dst}")
 
     deb_file = f"{pkg_name}_{version}_amd64.deb"
-    cmd = ["dpkg-deb", "--build", build_dir, deb_file]
+    cmd = ["dpkg-deb", "--build", "--root-owner-group", build_dir, deb_file]
     subprocess.run(cmd, check=True)
     print(f"Build DEB completado: {deb_file}")
+
+    print("\nEstructura del .deb:")
+    subprocess.run(["find", build_dir, "-type", "f"], check=False)
     return deb_file
 
 
