@@ -7,7 +7,7 @@ name = "electricitron"
 version = "1.0.0"
 description = "Software profesional de cálculos eléctricos y telecomunicaciones"
 readme = "README.md"
-license = {text = "MIT"}
+license = {text = "GPL-3.0-or-later"}
 requires-python = ">=3.10"
 authors = [
     {name = "jmbernabeu"}
