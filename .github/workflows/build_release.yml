@@ -49,10 +49,25 @@ jobs:
           pip install pyinstaller Pillow
       - name: Generate icons
         run: python generate_icons.py
-      - name: Install dpkg-deb
-        run: sudo apt-get update && sudo apt-get install -y dpkg-dev
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y dpkg-dev fakeroot desktop-file-utils
       - name: Build Linux DEB
         run: python build_linux.py
+      - name: Verify DEB contents
+        run: |
+          echo "=== .deb contents ==="
+          dpkg-deb --contents electricitron_*.deb
+          echo ""
+          echo "=== Validating desktop file ==="
+          dpkg-deb -x electricitron_*.deb /tmp/test_install
+          desktop-file-validate /tmp/test_install/usr/share/applications/electricitron.desktop || true
+          echo ""
+          echo "=== Icons installed ==="
+          find /tmp/test_install/usr/share/icons -name "electricitron*" 2>/dev/null || true
+          find /tmp/test_install/usr/share/pixmaps -name "electricitron*" 2>/dev/null || true
+          echo ""
+          echo "=== Pixmaps (fallback) ==="
+          ls -la /tmp/test_install/usr/share/pixmaps/ 2>/dev/null || true
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -114,8 +129,11 @@ jobs:
 
             ### Instalacion
             - **Windows**: Descarga `Electricitron.exe`
-            - **Linux (Debian/Ubuntu)**: Descarga el `.deb` e instala con `sudo dpkg -i electricitron_*.deb`
+            - **Linux (Debian/Ubuntu)**: Descarga el `.deb` e instala con `sudo dpkg -i electricitron_*.deb && sudo apt-get install -f`
             - **Linux (ejecutable)**: Descarga y ejecuta directamente
+
+            Despues de instalar el .deb, busca "Electricitron" en el menu de aplicaciones.
+            Si no aparece, ejecuta: `gtk-update-icon-cache -f -t /usr/share/icons/hicolor && update-desktop-database /usr/share/applications`
 
             ### Funcionalidades
             - Calculos electricos basicos (Ley de Ohm, Potencia, Energia, Impedancia)
@@ -125,7 +143,7 @@ jobs:
             - Telecomunicaciones (Enlaces, Fibra Optica, Redes, WiFi)
             - Distancias y lineas electricas
             - Exportacion a PDF y Excel
-            
+
             ### Licencia
             GPL-3.0-or-later
           files: |
