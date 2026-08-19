@@ -20,6 +20,7 @@ from electricitron.modules.telecom import TelecomCalculations
 from electricitron.modules.distances import DistanceCalculations
 from electricitron.reports.pdf_report import ReportManager
 from electricitron.reports.excel_report import ExcelReportManager
+from electricitron.auto_cable import calcular_seccion_automatica
 
 
 class CalculationEngine:
@@ -97,7 +98,7 @@ class ResultCard(QFrame):
 
         self.title = QLabel(title)
         self.title.setObjectName("sectionTitle")
-        self.title.setStyleSheet("font-size:14px; color:#1a5276; font-weight:bold; border:none; background:transparent;")
+        self.title.setStyleSheet("font-size:14px; color:#1565c0; font-weight:bold; border:none; background:transparent;")
         layout.addWidget(self.title)
 
         self.content_layout = QVBoxLayout()
@@ -107,9 +108,9 @@ class ResultCard(QFrame):
     def add_result(self, label, value):
         row = QHBoxLayout()
         lbl = QLabel(f"{label}:")
-        lbl.setStyleSheet("color:#566573; font-size:12px; border:none; background:transparent;")
+        lbl.setStyleSheet("color:#78909c; font-size:12px; border:none; background:transparent;")
         val = QLabel(str(value))
-        val.setStyleSheet("color:#1a5276; font-size:12px; font-weight:bold; border:none; background:transparent;")
+        val.setStyleSheet("color:#1565c0; font-size:12px; font-weight:bold; border:none; background:transparent;")
         row.addWidget(lbl)
         row.addStretch()
         row.addWidget(val)
@@ -166,13 +167,13 @@ class MainWindow(QMainWindow):
         logo_label.setStyleSheet("color:#ffffff; font-size:18px; font-weight:bold; border:none; background:transparent;")
         logo_layout.addWidget(logo_label)
         ver_label = QLabel("v1.0.0")
-        ver_label.setStyleSheet("color:#85c1e9; font-size:10px; border:none; background:transparent;")
+        ver_label.setStyleSheet("color:#90caf9; font-size:10px; border:none; background:transparent;")
         logo_layout.addWidget(ver_label)
         sidebar_layout.addWidget(logo_frame)
 
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.HLine)
-        sep.setStyleSheet("background-color:#1a5276; max-height:1px;")
+        sep.setStyleSheet("background-color:#1565c0; max-height:1px;")
         sidebar_layout.addWidget(sep)
 
         scroll = QScrollArea()
@@ -218,7 +219,7 @@ class MainWindow(QMainWindow):
 
         scroll_layout.addStretch()
         scroll.setWidget(scroll_widget)
-        scroll.setStyleSheet("QScrollArea{background:#1a5276; border:none;}")
+        scroll.setStyleSheet("QScrollArea{background:#1565c0; border:none;}")
         sidebar_layout.addWidget(scroll)
 
         parent_layout.addWidget(sidebar)
@@ -226,7 +227,7 @@ class MainWindow(QMainWindow):
 
     def _create_content_area(self, parent_layout):
         content_widget = QWidget()
-        content_widget.setStyleSheet("background-color:#f0f6fc;")
+        content_widget.setStyleSheet("background-color:#f5f9fd;")
         content_layout = QVBoxLayout(content_widget)
         content_layout.setContentsMargins(0, 0, 0, 0)
         content_layout.setSpacing(0)
@@ -247,9 +248,9 @@ class MainWindow(QMainWindow):
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setStyleSheet("QScrollArea{border:none; background:#f0f6fc;}")
+        scroll.setStyleSheet("QScrollArea{border:none; background:#f5f9fd;}")
         self.pages_stack = QStackedWidget()
-        self.pages_stack.setStyleSheet("background:#f0f6fc;")
+        self.pages_stack.setStyleSheet("background:#f5f9fd;")
         scroll.setWidget(self.pages_stack)
         content_layout.addWidget(scroll)
 
@@ -282,11 +283,11 @@ class MainWindow(QMainWindow):
         layout.setSpacing(15)
 
         subtitle = QLabel("Realice cálculos fundamentales de electricidad usando las leyes de Ohm, potencia, energía y más.")
-        subtitle.setStyleSheet("color:#566573; font-size:12px; margin-bottom:5px;")
+        subtitle.setStyleSheet("color:#78909c; font-size:12px; margin-bottom:5px;")
         layout.addWidget(subtitle)
 
         tabs = QTabWidget()
-        tabs.setStyleSheet("QTabWidget::pane{border:1px solid #d5dbdb; background:#ffffff; border-radius:6px; padding:10px;}")
+        tabs.setStyleSheet("QTabWidget::pane{border:1px solid #e0e0e0; background:#ffffff; border-radius:14px; padding:10px;}")
         tabs.addTab(self._create_ohm_tab(), "Ley de Ohm")
         tabs.addTab(self._create_potencia_tab(), "Potencia")
         tabs.addTab(self._create_energia_tab(), "Energía")
@@ -476,18 +477,143 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(30, 20, 30, 20)
         layout.setSpacing(15)
 
-        subtitle = QLabel("Dimensionamiento de conductores y verificación de caída de tensión.")
-        subtitle.setStyleSheet("color:#566573; font-size:12px;")
+        subtitle = QLabel("Dimensionamiento automático de conductores según normativa REBT/IEC y verificación de caída de tensión.")
+        subtitle.setStyleSheet("color:#78909c; font-size:12px;")
         layout.addWidget(subtitle)
 
         tabs = QTabWidget()
-        tabs.setStyleSheet("QTabWidget::pane{border:1px solid #d5dbdb; background:#ffffff; border-radius:6px; padding:10px;}")
+        tabs.addTab(self._create_auto_cable_tab(), "Sección Automática (Normativa)")
         tabs.addTab(self._create_seccion_tab(), "Sección por Corriente")
         tabs.addTab(self._create_caida_tab(), "Caída de Tensión")
         tabs.addTab(self._create_tabla_tab(), "Tabla de Secciones")
         layout.addWidget(tabs)
         layout.addStretch()
         self.pages_stack.addWidget(page)
+
+    def _create_auto_cable_tab(self):
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        layout.setSpacing(12)
+
+        intro = QLabel(
+            "Introduzca los datos del circuito y el sistema calculará automáticamente la sección "
+            "mínima de conductor según normativa vigente (REBT/IEC), considerando intensidad admisible "
+            "y caída de tensión máxima."
+        )
+        intro.setStyleSheet("color:#78909c; font-size:11px; padding:4px;")
+        intro.setWordWrap(True)
+        layout.addWidget(intro)
+
+        params_group = QGroupBox("Parámetros del circuito")
+        params_form = QVBoxLayout(params_group)
+
+        row1 = QHBoxLayout()
+        row1.addWidget(QLabel("Corriente de carga (A):"))
+        self.auto_intensidad = QDoubleSpinBox()
+        self.auto_intensidad.setRange(0.1, 5000)
+        self.auto_intensidad.setSuffix(" A")
+        self.auto_intensidad.setDecimals(1)
+        self.auto_intensidad.setValue(16)
+        self.auto_intensidad.setToolTip("Corriente nominal del circuito a dimensionar")
+        row1.addWidget(self.auto_intensidad)
+        row1.addSpacing(12)
+        row1.addWidget(QLabel("Longitud del tramo (m):"))
+        self.auto_longitud = QDoubleSpinBox()
+        self.auto_longitud.setRange(1, 100000)
+        self.auto_longitud.setSuffix(" m")
+        self.auto_longitud.setDecimals(1)
+        self.auto_longitud.setValue(50)
+        self.auto_longitud.setToolTip("Distancia desde la protección hasta el punto de carga")
+        row1.addWidget(self.auto_longitud)
+        row1.addSpacing(12)
+        row1.addWidget(QLabel("Tensión nominal (V):"))
+        self.auto_voltaje = QDoubleSpinBox()
+        self.auto_voltaje.setRange(12, 300000)
+        self.auto_voltaje.setSuffix(" V")
+        self.auto_voltaje.setDecimals(0)
+        self.auto_voltaje.setValue(230)
+        self.auto_voltaje.setToolTip("Tensión del sistema (230V monofásico, 400V trifásico)")
+        row1.addWidget(self.auto_voltaje)
+        params_form.addLayout(row1)
+
+        row2 = QHBoxLayout()
+        row2.addWidget(QLabel("Material conductor:"))
+        self.auto_material = QComboBox()
+        self.auto_material.addItems(["Cobre", "Aluminio"])
+        self.auto_material.setToolTip("Cobre (Cu) o aluminio (Al)")
+        row2.addWidget(self.auto_material)
+        row2.addSpacing(12)
+        row2.addWidget(QLabel("Temperatura ambiente (°C):"))
+        self.auto_temp_amb = QSpinBox()
+        self.auto_temp_amb.setRange(-20, 60)
+        self.auto_temp_amb.setSuffix(" °C")
+        self.auto_temp_amb.setValue(30)
+        self.auto_temp_amb.setToolTip("Temperatura ambiente del lugar de instalación")
+        row2.addWidget(self.auto_temp_amb)
+        row2.addSpacing(12)
+        row2.addWidget(QLabel("Nº conductores activos:"))
+        self.auto_n_cond = QSpinBox()
+        self.auto_n_cond.setRange(1, 20)
+        self.auto_n_cond.setValue(3)
+        self.auto_n_cond.setToolTip("Número de conductores activos en la misma tubería")
+        row2.addWidget(self.auto_n_cond)
+        params_form.addLayout(row2)
+
+        row3 = QHBoxLayout()
+        row3.addWidget(QLabel("Tipo de carga:"))
+        self.auto_tipo_carga = QComboBox()
+        self.auto_tipo_carga.addItems(["Iluminación (máx 3% caída)", "Fuerza (máx 5% caída)"])
+        self.auto_tipo_carga.setToolTip("REBT: 3% para iluminación, 5% para fuerza motriz")
+        row3.addWidget(self.auto_tipo_carga)
+        row3.addSpacing(12)
+        row3.addWidget(QLabel("Sistema:"))
+        self.auto_num_fases = QComboBox()
+        self.auto_num_fases.addItems(["Monofásico (1φ)", "Trifásico (3φ)"])
+        self.auto_num_fases.setToolTip("Monofásico 230V o trifásico 400V")
+        row3.addWidget(self.auto_num_fases)
+        row3.addSpacing(12)
+        row3.addWidget(QLabel("Temp. servicio cable (°C):"))
+        self.auto_temp_op = QSpinBox()
+        self.auto_temp_op.setRange(30, 90)
+        self.auto_temp_op.setSuffix(" °C")
+        self.auto_temp_op.setValue(70)
+        self.auto_temp_op.setToolTip("Temperatura máxima de servicio del conductor (70°C o 90°C)")
+        row3.addWidget(self.auto_temp_op)
+        params_form.addLayout(row3)
+
+        layout.addWidget(params_group)
+
+        btn_row = QHBoxLayout()
+        calc_btn = QPushButton("Calcular Sección Automática")
+        calc_btn.setObjectName("primaryBtn")
+        calc_btn.setMinimumHeight(44)
+        calc_btn.clicked.connect(self._calc_auto_cable)
+        btn_row.addWidget(calc_btn)
+        btn_row.addStretch()
+        layout.addLayout(btn_row)
+
+        self.auto_result_group = QGroupBox("Resultado del Dimensionamiento")
+        result_layout = QVBoxLayout(self.auto_result_group)
+
+        self.auto_result = ResultCard("Sección Recomendada")
+        result_layout.addWidget(self.auto_result)
+
+        self.auto_verif_card = ResultCard("Verificación Normativa")
+        result_layout.addWidget(self.auto_verif_card)
+
+        self.auto_tabla = QTableWidget()
+        self.auto_tabla.setColumnCount(6)
+        self.auto_tabla.setHorizontalHeaderLabels([
+            "Sección (mm²)", "I. Admisible (A)", "I. Suficiente",
+            "Caída (%)", "Caída (V)", "Cumple CT"
+        ])
+        self.auto_tabla.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.auto_tabla.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.auto_tabla.setMaximumHeight(260)
+        result_layout.addWidget(self.auto_tabla)
+
+        layout.addWidget(self.auto_result_group)
+        return tab
 
     def _create_seccion_tab(self):
         tab = QWidget()
@@ -611,11 +737,11 @@ class MainWindow(QMainWindow):
         layout.setSpacing(15)
 
         subtitle = QLabel("Selección y dimensionamiento de protecciones eléctricas.")
-        subtitle.setStyleSheet("color:#566573; font-size:12px;")
+        subtitle.setStyleSheet("color:#78909c; font-size:12px;")
         layout.addWidget(subtitle)
 
         tabs = QTabWidget()
-        tabs.setStyleSheet("QTabWidget::pane{border:1px solid #d5dbdb; background:#ffffff; border-radius:6px; padding:10px;}")
+        tabs.setStyleSheet("QTabWidget::pane{border:1px solid #e0e0e0; background:#ffffff; border-radius:14px; padding:10px;}")
         tabs.addTab(self._create_interrup_tab(), "Interruptor")
         tabs.addTab(self._create_diferencial_tab(), "Diferencial")
         tabs.addTab(self._create_fusible_tab(), "Fusible")
@@ -755,11 +881,11 @@ class MainWindow(QMainWindow):
         layout.setSpacing(15)
 
         subtitle = QLabel("Dimensionamiento y diseño de instalaciones eléctricas.")
-        subtitle.setStyleSheet("color:#566573; font-size:12px;")
+        subtitle.setStyleSheet("color:#78909c; font-size:12px;")
         layout.addWidget(subtitle)
 
         tabs = QTabWidget()
-        tabs.setStyleSheet("QTabWidget::pane{border:1px solid #d5dbdb; background:#ffffff; border-radius:6px; padding:10px;}")
+        tabs.setStyleSheet("QTabWidget::pane{border:1px solid #e0e0e0; background:#ffffff; border-radius:14px; padding:10px;}")
         tabs.addTab(self._create_pot_inst_tab(), "Potencia Instalación")
         tabs.addTab(self._create_esquema_tab(), "Esquema Protección")
         tabs.addTab(self._create_selectividad_tab(), "Selectividad")
@@ -891,11 +1017,11 @@ class MainWindow(QMainWindow):
         layout.setSpacing(15)
 
         subtitle = QLabel("Cálculos de telecomunicaciones: enlaces inalámbricos, fibra óptica y redes de datos.")
-        subtitle.setStyleSheet("color:#566573; font-size:12px;")
+        subtitle.setStyleSheet("color:#78909c; font-size:12px;")
         layout.addWidget(subtitle)
 
         tabs = QTabWidget()
-        tabs.setStyleSheet("QTabWidget::pane{border:1px solid #d5dbdb; background:#ffffff; border-radius:6px; padding:10px;}")
+        tabs.setStyleSheet("QTabWidget::pane{border:1px solid #e0e0e0; background:#ffffff; border-radius:14px; padding:10px;}")
         tabs.addTab(self._create_enlace_tab(), "Enlace Inalámbrico")
         tabs.addTab(self._create_fibra_tab(), "Fibra Óptica")
         tabs.addTab(self._create_red_tab(), "Red de Datos")
@@ -1049,11 +1175,11 @@ class MainWindow(QMainWindow):
         layout.setSpacing(15)
 
         subtitle = QLabel("Cálculos de distancias, desplazamientos y dimensionamiento de líneas eléctricas.")
-        subtitle.setStyleSheet("color:#566573; font-size:12px;")
+        subtitle.setStyleSheet("color:#78909c; font-size:12px;")
         layout.addWidget(subtitle)
 
         tabs = QTabWidget()
-        tabs.setStyleSheet("QTabWidget::pane{border:1px solid #d5dbdb; background:#ffffff; border-radius:6px; padding:10px;}")
+        tabs.setStyleSheet("QTabWidget::pane{border:1px solid #e0e0e0; background:#ffffff; border-radius:14px; padding:10px;}")
         tabs.addTab(self._create_dist_ptos_tab(), "Distancia entre Puntos")
         tabs.addTab(self._create_zona_postes_tab(), "Zona de Postes")
         tabs.addTab(self._create_linea_larga_tab(), "Línea Larga")
@@ -1207,7 +1333,7 @@ class MainWindow(QMainWindow):
         layout.setSpacing(15)
 
         subtitle = QLabel("Gestione los cálculos realizados y exporte informes.")
-        subtitle.setStyleSheet("color:#566573; font-size:12px;")
+        subtitle.setStyleSheet("color:#78909c; font-size:12px;")
         layout.addWidget(subtitle)
 
         btn_row = QHBoxLayout()
@@ -1229,7 +1355,7 @@ class MainWindow(QMainWindow):
         layout.addLayout(btn_row)
 
         info_label = QLabel("Registros guardados:")
-        info_label.setStyleSheet("font-weight:bold; color:#1a5276; font-size:14px; margin-top:10px;")
+        info_label.setStyleSheet("font-weight:bold; color:#1565c0; font-size:14px; margin-top:10px;")
         layout.addWidget(info_label)
 
         self.report_table = QTableWidget()
@@ -1266,7 +1392,7 @@ class MainWindow(QMainWindow):
 
         page_titles = {
             "basico": "Ley de Ohm y Cálculos Básicos",
-            "cable": "Secciones y Cables",
+            "cable": "Sección Automática de Conductores",
             "proteccion": "Protecciones Eléctricas",
             "instalacion": "Instalaciones Eléctricas",
             "telecom": "Telecomunicaciones",
@@ -1297,7 +1423,7 @@ class MainWindow(QMainWindow):
             self, "Acerca de Electricitron",
             "<h2>⚡ Electricitron v1.0.0</h2>"
             "<p>Software profesional de cálculos eléctricos y telecomunicaciones.</p>"
-            "<p>Incluye: cálculos básicos, secciones de cables, protecciones, "
+            "<p>Incluye: cálculos básicos, <b>sección automática de cables según REBT/IEC</b>, protecciones, "
             "instalaciones, telecomunicaciones y cálculo de distancias.</p>"
             "<p>Exporta informes en PDF y Excel.</p>"
             "<hr>"
@@ -1328,6 +1454,108 @@ class MainWindow(QMainWindow):
             self.store.add("basico", "Ley de Ohm",
                            {"V": v, "I": i, "R": r}, result)
             self._update_status("Cálculo de Ley de Ohm realizado")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", str(e))
+
+    def _calc_auto_cable(self):
+        try:
+            intensidad = self.auto_intensidad.value()
+            longitud = self.auto_longitud.value()
+            voltaje = self.auto_voltaje.value()
+            material = "cobre" if self.auto_material.currentIndex() == 0 else "aluminio"
+            temp_amb = self.auto_temp_amb.value()
+            n_cond = self.auto_n_cond.value()
+            tipo_carga = "iluminacion" if self.auto_tipo_carga.currentIndex() == 0 else "fuerza"
+            num_fases = 1 if self.auto_num_fases.currentIndex() == 0 else 3
+            temp_op = self.auto_temp_op.value()
+
+            if intensidad <= 0 or longitud <= 0 or voltaje <= 0:
+                QMessageBox.warning(self, "Error", "Introduce valores mayores a cero.")
+                return
+
+            result = calcular_seccion_automatica(
+                intensidad=intensidad,
+                longitud=longitud,
+                voltaje=voltaje,
+                temp_amb=temp_amb,
+                n_conductores=n_cond,
+                material=material,
+                tipo_carga=tipo_carga,
+                num_fases=num_fases,
+                temp_operacion=temp_op,
+            )
+
+            self.auto_result.clear_results()
+            verif = result.get("verificacion", {})
+            if verif:
+                sec = verif.get("seccion", "N/D")
+                self.auto_result.add_result("Sección recomendada", f"{sec} mm²")
+                self.auto_result.add_result("Material", material.capitalize())
+                self.auto_result.add_result("Motivo", result.get("motivo", ""))
+                self.auto_result.add_result("Interruptor recomendado", f"{result.get('interruptor_recomendado', 'N/D')} A")
+            else:
+                self.auto_result.add_result("Resultado", result.get("motivo", "Sin resultado"))
+
+            self.auto_verif_card.clear_results()
+            if verif:
+                self.auto_verif_card.add_result("I. admisible corregida", f"{verif.get('ia_admisible_corregida', 'N/D')} A")
+                self.auto_verif_card.add_result("I. de carga", f"{verif.get('ia_carga', 'N/D')} A")
+                self.auto_verif_card.add_result("Margen intensidad", f"{verif.get('margen_ia_pct', 'N/D')}%")
+                self.auto_verif_card.add_result("Caída de tensión", f"{verif.get('caida_tension_pct', 'N/D')}%")
+                self.auto_verif_card.add_result("Caída máxima permitida", f"{verif.get('caida_tension_max_pct', 'N/D')}%")
+                self.auto_verif_card.add_result("Caída en voltios", f"{verif.get('caida_tension_v', 'N/D')} V")
+                self.auto_verif_card.add_result("Tensión en régimen", f"{verif.get('v_regimen', 'N/D')} V")
+                cumple_ia = "Sí" if verif.get("cumple_ia") else "No"
+                cumple_ct = "Sí" if verif.get("cumple_ct") else "No"
+                self.auto_verif_card.add_result("Cumple intensidad", cumple_ia)
+                self.auto_verif_card.add_result("Cumple caída tensión", cumple_ct)
+                cumple_total = "SÍ - VÁLIDO" if verif.get("cumple") else "NO - REVISAR"
+                self.auto_verif_card.add_result("Cumple normativa", cumple_total)
+
+            tabla = result.get("tabla_comparativa", [])
+            self.auto_tabla.setRowCount(len(tabla))
+            for i, row in enumerate(tabla):
+                self.auto_tabla.setItem(i, 0, QTableWidgetItem(f"{row['seccion']} mm²"))
+                self.auto_tabla.setItem(i, 1, QTableWidgetItem(f"{row['ia_admisible']} A"))
+                si_ia = "✓" if row["ia_suficiente"] else "✗"
+                self.auto_tabla.setItem(i, 2, QTableWidgetItem(si_ia))
+                self.auto_tabla.setItem(i, 3, QTableWidgetItem(f"{row['caida_pct']}%"))
+                self.auto_tabla.setItem(i, 4, QTableWidgetItem(f"{row['caida_v']} V"))
+                si_ct = "✓" if row["ct_cumple"] else "✗"
+                self.auto_tabla.setItem(i, 5, QTableWidgetItem(si_ct))
+
+                for j in range(6):
+                    item = self.auto_tabla.item(i, j)
+                    if item:
+                        if row["ambos_cumplen"]:
+                            item.setBackground(QColor("#e8f5e9"))
+                        elif row["ia_suficiente"] or row["ct_cumple"]:
+                            item.setBackground(QColor("#fff8e1"))
+                        else:
+                            item.setBackground(QColor("#ffebee"))
+
+            self.store.add(
+                "cable", "Sección Automática (Normativa)",
+                {
+                    "intensidad_A": intensidad,
+                    "longitud_m": longitud,
+                    "voltaje_V": voltaje,
+                    "material": material,
+                    "temp_amb": temp_amb,
+                    "n_conductores": n_cond,
+                    "tipo_carga": tipo_carga,
+                    "fases": num_fases,
+                },
+                {
+                    "seccion_recomendada_mm2": verif.get("seccion", "N/D"),
+                    "ia_admisible_A": verif.get("ia_admisible_corregida", "N/D"),
+                    "caida_tension_pct": verif.get("caida_tension_pct", "N/D"),
+                    "interruptor_recomendado_A": result.get("interruptor_recomendado", "N/D"),
+                    "cumple_normativa": verif.get("cumple", False),
+                },
+            )
+            self._update_status("Cálculo de sección automática completado")
+
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
 
