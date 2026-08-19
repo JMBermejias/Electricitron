@@ -322,6 +322,6 @@ class ReportManager:
             generator.add_page_break()
 
         generator.add_footer_note(
-            f"Generado por Electricitron v1.0.0 | {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+            f"Generado por Electricitron v1.1.1 | {datetime.now().strftime('%d/%m/%Y %H:%M')}"
         )
         return generator.generate()

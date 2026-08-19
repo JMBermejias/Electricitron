@@ -137,7 +137,7 @@ class MainWindow(QMainWindow):
         self._init_ui()
 
     def _init_ui(self):
-        self.setWindowTitle("Electricitron v1.0.0 - Cálculos Eléctricos y Telecomunicaciones")
+        self.setWindowTitle("Electricitron v1.1.1 - Cálculos Eléctricos y Telecomunicaciones")
         self.setMinimumSize(1280, 800)
         self.resize(1440, 900)
 
@@ -166,7 +166,7 @@ class MainWindow(QMainWindow):
         logo_label = QLabel("⚡ ELECTRICITRON")
         logo_label.setStyleSheet("color:#ffffff; font-size:18px; font-weight:bold; border:none; background:transparent;")
         logo_layout.addWidget(logo_label)
-        ver_label = QLabel("v1.0.0")
+        ver_label = QLabel("v1.1.1")
         ver_label.setStyleSheet("color:#90caf9; font-size:10px; border:none; background:transparent;")
         logo_layout.addWidget(ver_label)
         sidebar_layout.addWidget(logo_frame)
@@ -258,7 +258,7 @@ class MainWindow(QMainWindow):
         footer.setObjectName("statusBar")
         footer_layout = QHBoxLayout(footer)
         footer_layout.setContentsMargins(15, 0, 15, 0)
-        self.footer_label = QLabel("Electricitron v1.0.0 | Software de cálculos eléctricos")
+        self.footer_label = QLabel("Electricitron v1.1.1 | Software de cálculos eléctricos")
         self.footer_label.setObjectName("statusLabel")
         footer_layout.addWidget(self.footer_label)
         content_layout.addWidget(footer)
@@ -1421,7 +1421,7 @@ class MainWindow(QMainWindow):
     def _show_about(self):
         QMessageBox.about(
             self, "Acerca de Electricitron",
-            "<h2>⚡ Electricitron v1.0.0</h2>"
+            "<h2>⚡ Electricitron v1.1.1</h2>"
             "<p>Software profesional de cálculos eléctricos y telecomunicaciones.</p>"
             "<p>Incluye: cálculos básicos, <b>sección automática de cables según REBT/IEC</b>, protecciones, "
             "instalaciones, telecomunicaciones y cálculo de distancias.</p>"
@@ -1432,7 +1432,7 @@ class MainWindow(QMainWindow):
 
     def _update_status(self, msg):
         self.status_label.setText(msg)
-        self.footer_label.setText(f"Electricitron v1.0.0 | {msg}")
+        self.footer_label.setText(f"Electricitron v1.1.1 | {msg}")
 
     # ============ CÁLCULOS ============
 
