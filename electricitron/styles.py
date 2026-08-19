@@ -71,30 +71,29 @@ QLabel#statusLabel {
 
 /* ===== SIDEBAR BUTTONS ===== */
 QPushButton#sidebarBtn {
-    background-color: transparent;
-    color: rgba(255,255,255,0.85);
-    border: none;
-    border-left: 3px solid transparent;
-    border-radius: 0px;
+    background-color: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.15);
     text-align: left;
-    padding: 11px 18px;
+    padding: 10px 16px;
     font-size: 13px;
-    font-weight: 400;
-    margin: 1px 8px;
-    border-radius: 8px;
+    font-weight: 500;
+    margin: 3px 10px;
+    border-radius: 10px;
 }
 
 QPushButton#sidebarBtn:hover {
-    background-color: rgba(255,255,255,0.15);
+    background-color: rgba(255, 255, 255, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.3);
     color: #ffffff;
 }
 
 QPushButton#sidebarBtn:checked,
 QPushButton#sidebarBtn[active="true"] {
-    background-color: rgba(255,255,255,0.22);
+    background-color: rgba(255, 255, 255, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.5);
     color: #ffffff;
-    font-weight: 600;
-    border-left: 3px solid #ffffff;
+    font-weight: 700;
 }
 
 QLabel#sidebarSection {

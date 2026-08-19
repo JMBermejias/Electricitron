@@ -83,7 +83,7 @@ class SidebarButton(QPushButton):
         self.setObjectName("sidebarBtn")
         self.setCheckable(True)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setFixedHeight(44)
+        self.setFixedHeight(42)
 
 
 class ResultCard(QFrame):
