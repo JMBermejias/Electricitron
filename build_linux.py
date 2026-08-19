@@ -35,7 +35,7 @@ def build_linux_deb():
         "--add-data=assets:assets",
         "--clean",
         "--noconfirm",
-        "--distpath=deb_build/usr/bin",
+        "--distpath=deb_build/electricitron_1.0.0_amd64/usr/bin",
         "electricitron/main.py"
     ]
     if os.path.exists("assets/icon.png"):
