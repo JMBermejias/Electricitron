@@ -7,7 +7,7 @@ import shutil
 
 
 def build_linux_deb():
-    version = "1.1.1"
+    version = "1.1.2"
     pkg_name = "electricitron"
     build_dir = f"deb_build/{pkg_name}_{version}_amd64"
     bin_dir = f"{build_dir}/usr/bin"
