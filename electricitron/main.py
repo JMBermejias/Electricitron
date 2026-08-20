@@ -195,6 +195,21 @@ class MainWindow(QMainWindow):
             "secondaryBtn": BTN_SECONDARY,
             "dangerBtn": BTN_DANGER,
             "successBtn": BTN_SUCCESS,
+            "saveBtn": (
+                "QPushButton { background-color: #1565c0; color: #ffffff; border: 2px solid #0d47a1; "
+                "border-radius: 8px; padding: 6px 14px; font-size: 12px; font-weight: 600; min-height: 28px; }"
+                "QPushButton:hover { background-color: #1976d2; }"
+            ),
+            "pdfBtn": (
+                "QPushButton { background-color: #1565c0; color: #ffffff; border: 2px solid #0d47a1; "
+                "border-radius: 8px; padding: 6px 14px; font-size: 12px; font-weight: 600; min-height: 28px; }"
+                "QPushButton:hover { background-color: #1976d2; }"
+            ),
+            "excelBtn": (
+                "QPushButton { background-color: #1565c0; color: #ffffff; border: 2px solid #0d47a1; "
+                "border-radius: 8px; padding: 6px 14px; font-size: 12px; font-weight: 600; min-height: 28px; }"
+                "QPushButton:hover { background-color: #1976d2; }"
+            ),
         }
         for btn in self.findChildren(QPushButton):
             name = btn.objectName()
