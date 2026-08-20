@@ -22,6 +22,29 @@ from electricitron.reports.pdf_report import ReportManager
 from electricitron.reports.excel_report import ExcelReportManager
 from electricitron.auto_cable import calcular_seccion_automatica
 
+BTN_PRIMARY = (
+    "QPushButton { background-color: #1565c0; color: #ffffff; border: 2px solid #0d47a1; "
+    "border-radius: 12px; padding: 12px 32px; font-size: 14px; font-weight: 700; "
+    "min-height: 42px; }"
+    "QPushButton:hover { background-color: #1976d2; }"
+    "QPushButton:pressed { background-color: #0d47a1; }"
+)
+BTN_SECONDARY = (
+    "QPushButton { background-color: #e3f2fd; color: #0d47a1; border: 2px solid #90caf9; "
+    "border-radius: 12px; padding: 10px 22px; font-size: 13px; font-weight: 600; min-height: 36px; }"
+    "QPushButton:hover { background-color: #bbdefb; }"
+)
+BTN_DANGER = (
+    "QPushButton { background-color: #d32f2f; color: #ffffff; border: 2px solid #b71c1c; "
+    "border-radius: 12px; padding: 10px 22px; font-size: 13px; font-weight: 600; min-height: 36px; }"
+    "QPushButton:hover { background-color: #e53935; }"
+)
+BTN_SUCCESS = (
+    "QPushButton { background-color: #2e7d32; color: #ffffff; border: 2px solid #1b5e20; "
+    "border-radius: 12px; padding: 10px 22px; font-size: 13px; font-weight: 600; min-height: 36px; }"
+    "QPushButton:hover { background-color: #388e3c; }"
+)
+
 
 class CalculationEngine:
     """Motor central de cálculos."""
@@ -78,12 +101,21 @@ class ReportStore:
 class SidebarButton(QPushButton):
     """Botón personalizado para el sidebar."""
 
+    SIDEBAR_STYLE = (
+        "QPushButton { background-color: rgba(255,255,255,0.15); color: #ffffff; "
+        "border: 1px solid rgba(255,255,255,0.2); border-radius: 10px; "
+        "text-align: left; padding: 10px 16px; font-size: 13px; font-weight: 500; }"
+        "QPushButton:hover { background-color: rgba(255,255,255,0.30); border: 1px solid rgba(255,255,255,0.4); }"
+        "QPushButton:checked { background-color: rgba(255,255,255,0.40); border: 1px solid rgba(255,255,255,0.6); font-weight: 700; }"
+    )
+
     def __init__(self, text, parent=None):
         super().__init__(text, parent)
         self.setObjectName("sidebarBtn")
         self.setCheckable(True)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setFixedHeight(42)
+        self.setStyleSheet(self.SIDEBAR_STYLE)
 
 
 class ResultCard(QFrame):
@@ -137,7 +169,7 @@ class MainWindow(QMainWindow):
         self._init_ui()
 
     def _init_ui(self):
-        self.setWindowTitle("Electricitron v1.1.2 - Cálculos Eléctricos y Telecomunicaciones")
+        self.setWindowTitle("Electricitron v1.1.3 - Cálculos Eléctricos y Telecomunicaciones")
         self.setMinimumSize(1280, 800)
         self.resize(1440, 900)
 
@@ -151,7 +183,20 @@ class MainWindow(QMainWindow):
         self._create_content_area(main_layout)
 
         self._setup_pages()
+        self._apply_all_button_styles()
         self._update_status("Aplicación iniciada correctamente")
+
+    def _apply_all_button_styles(self):
+        styles = {
+            "primaryBtn": BTN_PRIMARY,
+            "secondaryBtn": BTN_SECONDARY,
+            "dangerBtn": BTN_DANGER,
+            "successBtn": BTN_SUCCESS,
+        }
+        for btn in self.findChildren(QPushButton):
+            name = btn.objectName()
+            if name in styles:
+                btn.setStyleSheet(styles[name])
 
     def _create_sidebar(self, parent_layout):
         sidebar = QFrame()
@@ -166,7 +211,7 @@ class MainWindow(QMainWindow):
         logo_label = QLabel("⚡ ELECTRICITRON")
         logo_label.setStyleSheet("color:#ffffff; font-size:18px; font-weight:bold; border:none; background:transparent;")
         logo_layout.addWidget(logo_label)
-        ver_label = QLabel("v1.1.2")
+        ver_label = QLabel("v1.1.3")
         ver_label.setStyleSheet("color:#90caf9; font-size:10px; border:none; background:transparent;")
         logo_layout.addWidget(ver_label)
         sidebar_layout.addWidget(logo_frame)
@@ -258,7 +303,7 @@ class MainWindow(QMainWindow):
         footer.setObjectName("statusBar")
         footer_layout = QHBoxLayout(footer)
         footer_layout.setContentsMargins(15, 0, 15, 0)
-        self.footer_label = QLabel("Electricitron v1.1.2 | Software de cálculos eléctricos")
+        self.footer_label = QLabel("Electricitron v1.1.3 | Software de cálculos eléctricos")
         self.footer_label.setObjectName("statusLabel")
         footer_layout.addWidget(self.footer_label)
         content_layout.addWidget(footer)
@@ -1421,7 +1466,7 @@ class MainWindow(QMainWindow):
     def _show_about(self):
         QMessageBox.about(
             self, "Acerca de Electricitron",
-            "<h2>⚡ Electricitron v1.1.2</h2>"
+            "<h2>⚡ Electricitron v1.1.3</h2>"
             "<p>Software profesional de cálculos eléctricos y telecomunicaciones.</p>"
             "<p>Incluye: cálculos básicos, <b>sección automática de cables según REBT/IEC</b>, protecciones, "
             "instalaciones, telecomunicaciones y cálculo de distancias.</p>"
@@ -1432,7 +1477,7 @@ class MainWindow(QMainWindow):
 
     def _update_status(self, msg):
         self.status_label.setText(msg)
-        self.footer_label.setText(f"Electricitron v1.1.2 | {msg}")
+        self.footer_label.setText(f"Electricitron v1.1.3 | {msg}")
 
     # ============ CÁLCULOS ============
 
