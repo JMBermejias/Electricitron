@@ -1,6 +1,8 @@
 """Electricitron - Software profesional de cálculos eléctricos y telecomunicaciones."""
 import sys
 import os
+import json
+from datetime import datetime
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QFrame, QPushButton, QLabel, QLineEdit, QComboBox, QDoubleSpinBox,
@@ -18,8 +20,8 @@ from electricitron.modules.protections import ProtectionCalculations
 from electricitron.modules.installations import InstallationCalculations
 from electricitron.modules.telecom import TelecomCalculations
 from electricitron.modules.distances import DistanceCalculations
-from electricitron.reports.pdf_report import ReportManager
-from electricitron.reports.excel_report import ExcelReportManager
+from electricitron.reports.pdf_report import ReportManager, ReportGenerator
+from electricitron.reports.excel_report import ExcelReportManager, ExcelReportGenerator
 from electricitron.auto_cable import calcular_seccion_automatica
 
 BTN_PRIMARY = (
@@ -166,10 +168,11 @@ class MainWindow(QMainWindow):
         self.engine = CalculationEngine()
         self.store = ReportStore()
         self.current_sidebar = None
+        self._last_calc = {}
         self._init_ui()
 
     def _init_ui(self):
-        self.setWindowTitle("Electricitron v1.1.3 - Cálculos Eléctricos y Telecomunicaciones")
+        self.setWindowTitle("Electricitron v1.2.0 - Cálculos Eléctricos y Telecomunicaciones")
         self.setMinimumSize(1280, 800)
         self.resize(1440, 900)
 
@@ -198,6 +201,97 @@ class MainWindow(QMainWindow):
             if name in styles:
                 btn.setStyleSheet(styles[name])
 
+    def _create_action_buttons(self, calc_key, category, title):
+        row = QHBoxLayout()
+        row.setSpacing(6)
+
+        save_btn = QPushButton("Guardar")
+        save_btn.setObjectName("saveBtn")
+        save_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        save_btn.clicked.connect(lambda: self._save_single(calc_key))
+        row.addWidget(save_btn)
+
+        pdf_btn = QPushButton("PDF")
+        pdf_btn.setObjectName("pdfBtn")
+        pdf_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        pdf_btn.clicked.connect(lambda: self._export_single_pdf(calc_key, category, title))
+        row.addWidget(pdf_btn)
+
+        excel_btn = QPushButton("Excel")
+        excel_btn.setObjectName("excelBtn")
+        excel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        excel_btn.clicked.connect(lambda: self._export_single_excel(calc_key, category, title))
+        row.addWidget(excel_btn)
+
+        row.addStretch()
+        return row
+
+    def _export_single_pdf(self, calc_key, category, title):
+        data = self._last_calc.get(calc_key)
+        if not data:
+            QMessageBox.information(self, "Información", "Realice el cálculo primero.")
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Exportar PDF",
+            os.path.expanduser(f"~/{title.replace(' ', '_')}.pdf"),
+            "Archivos PDF (*.pdf)"
+        )
+        if path:
+            try:
+                gen = ReportGenerator(path)
+                gen.add_cover_page()
+                gen.add_calculation_result(title, data["params"], data["results"])
+                gen.add_footer_note(f"Generado por Electricitron v1.2.0 | {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+                gen.generate()
+                QMessageBox.information(self, "Éxito", f"PDF exportado:\n{path}")
+            except Exception as e:
+                QMessageBox.critical(self, "Error al exportar PDF", str(e))
+
+    def _export_single_excel(self, calc_key, category, title):
+        data = self._last_calc.get(calc_key)
+        if not data:
+            QMessageBox.information(self, "Información", "Realice el cálculo primero.")
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Exportar Excel",
+            os.path.expanduser(f"~/{title.replace(' ', '_')}.xlsx"),
+            "Archivos Excel (*.xlsx)"
+        )
+        if path:
+            try:
+                gen = ExcelReportGenerator(path)
+                gen.add_title_sheet()
+                gen.add_results_sheet(category, data["results"], title=title)
+                gen.save()
+                QMessageBox.information(self, "Éxito", f"Excel exportado:\n{path}")
+            except Exception as e:
+                QMessageBox.critical(self, "Error al exportar Excel", str(e))
+
+    def _save_single(self, calc_key):
+        data = self._last_calc.get(calc_key)
+        if not data:
+            QMessageBox.information(self, "Información", "Realice el cálculo primero.")
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Guardar cálculo",
+            os.path.expanduser(f"~/{data['title'].replace(' ', '_')}.json"),
+            "Archivos JSON (*.json)"
+        )
+        if path:
+            try:
+                save_data = {
+                    "title": data["title"],
+                    "category": data["category"],
+                    "params": data["params"],
+                    "results": data["results"],
+                    "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                }
+                with open(path, "w", encoding="utf-8") as f:
+                    json.dump(save_data, f, indent=2, ensure_ascii=False)
+                QMessageBox.information(self, "Éxito", f"Guardado correctamente:\n{path}")
+            except Exception as e:
+                QMessageBox.critical(self, "Error al guardar", str(e))
+
     def _create_sidebar(self, parent_layout):
         sidebar = QFrame()
         sidebar.setObjectName("sidebar")
@@ -211,7 +305,7 @@ class MainWindow(QMainWindow):
         logo_label = QLabel("⚡ ELECTRICITRON")
         logo_label.setStyleSheet("color:#ffffff; font-size:18px; font-weight:bold; border:none; background:transparent;")
         logo_layout.addWidget(logo_label)
-        ver_label = QLabel("v1.1.3")
+        ver_label = QLabel("v1.2.0")
         ver_label.setStyleSheet("color:#90caf9; font-size:10px; border:none; background:transparent;")
         logo_layout.addWidget(ver_label)
         sidebar_layout.addWidget(logo_frame)
@@ -303,7 +397,7 @@ class MainWindow(QMainWindow):
         footer.setObjectName("statusBar")
         footer_layout = QHBoxLayout(footer)
         footer_layout.setContentsMargins(15, 0, 15, 0)
-        self.footer_label = QLabel("Electricitron v1.1.3 | Software de cálculos eléctricos")
+        self.footer_label = QLabel("Electricitron v1.2.0 | Software de cálculos eléctricos")
         self.footer_label.setObjectName("statusLabel")
         footer_layout.addWidget(self.footer_label)
         content_layout.addWidget(footer)
@@ -383,8 +477,8 @@ class MainWindow(QMainWindow):
         calc_btn.setObjectName("primaryBtn")
         calc_btn.clicked.connect(self._calc_ohm)
         btn_row.addWidget(calc_btn)
-        btn_row.addStretch()
         layout.addLayout(btn_row)
+        layout.addLayout(self._create_action_buttons("ohm", "basico", "Ley de Ohm"))
         return tab
 
     def _create_potencia_tab(self):
@@ -430,8 +524,8 @@ class MainWindow(QMainWindow):
         calc_btn.setObjectName("primaryBtn")
         calc_btn.clicked.connect(self._calc_potencia)
         btn_row.addWidget(calc_btn)
-        btn_row.addStretch()
         layout.addLayout(btn_row)
+        layout.addLayout(self._create_action_buttons("potencia", "basico", "Potencia"))
         return tab
 
     def _create_energia_tab(self):
@@ -465,8 +559,8 @@ class MainWindow(QMainWindow):
         calc_btn.setObjectName("primaryBtn")
         calc_btn.clicked.connect(self._calc_energia)
         btn_row.addWidget(calc_btn)
-        btn_row.addStretch()
         layout.addLayout(btn_row)
+        layout.addLayout(self._create_action_buttons("energia", "basico", "Energía"))
         return tab
 
     def _create_impedancia_tab(self):
@@ -512,8 +606,8 @@ class MainWindow(QMainWindow):
         calc_btn.setObjectName("primaryBtn")
         calc_btn.clicked.connect(self._calc_impedancia)
         btn_row.addWidget(calc_btn)
-        btn_row.addStretch()
         layout.addLayout(btn_row)
+        layout.addLayout(self._create_action_buttons("impedancia", "basico", "Impedancia"))
         return tab
 
     def _create_cable_page(self):
@@ -634,8 +728,8 @@ class MainWindow(QMainWindow):
         calc_btn.setMinimumHeight(44)
         calc_btn.clicked.connect(self._calc_auto_cable)
         btn_row.addWidget(calc_btn)
-        btn_row.addStretch()
         layout.addLayout(btn_row)
+        layout.addLayout(self._create_action_buttons("auto_cable", "cable", "Sección Automática"))
 
         self.auto_result_group = QGroupBox("Resultado del Dimensionamiento")
         result_layout = QVBoxLayout(self.auto_result_group)
@@ -687,8 +781,8 @@ class MainWindow(QMainWindow):
         btn.setObjectName("primaryBtn")
         btn.clicked.connect(self._calc_seccion)
         btn_row.addWidget(btn)
-        btn_row.addStretch()
         layout.addLayout(btn_row)
+        layout.addLayout(self._create_action_buttons("seccion", "cable", "Sección por Corriente"))
         return tab
 
     def _create_caida_tab(self):
@@ -744,8 +838,8 @@ class MainWindow(QMainWindow):
         btn.setObjectName("primaryBtn")
         btn.clicked.connect(self._calc_caida_tension)
         btn_row.addWidget(btn)
-        btn_row.addStretch()
         layout.addLayout(btn_row)
+        layout.addLayout(self._create_action_buttons("caida", "cable", "Caída de Tensión"))
         return tab
 
     def _create_tabla_tab(self):
@@ -773,6 +867,7 @@ class MainWindow(QMainWindow):
         self.tabla_cables.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         form.addWidget(self.tabla_cables)
         layout.addWidget(group)
+        layout.addLayout(self._create_action_buttons("tabla", "cable", "Tabla de Secciones"))
         return tab
 
     def _create_proteccion_page(self):
@@ -822,8 +917,8 @@ class MainWindow(QMainWindow):
         btn.setObjectName("primaryBtn")
         btn.clicked.connect(self._calc_interruptor)
         btn_row.addWidget(btn)
-        btn_row.addStretch()
         layout.addLayout(btn_row)
+        layout.addLayout(self._create_action_buttons("interrup", "proteccion", "Selección Interruptor"))
         return tab
 
     def _create_diferencial_tab(self):
@@ -853,8 +948,8 @@ class MainWindow(QMainWindow):
         btn.setObjectName("primaryBtn")
         btn.clicked.connect(self._calc_diferencial)
         btn_row.addWidget(btn)
-        btn_row.addStretch()
         layout.addLayout(btn_row)
+        layout.addLayout(self._create_action_buttons("diferencial", "proteccion", "Selección Diferencial"))
         return tab
 
     def _create_fusible_tab(self):
@@ -884,8 +979,8 @@ class MainWindow(QMainWindow):
         btn.setObjectName("primaryBtn")
         btn.clicked.connect(self._calc_fusible)
         btn_row.addWidget(btn)
-        btn_row.addStretch()
         layout.addLayout(btn_row)
+        layout.addLayout(self._create_action_buttons("fusible", "proteccion", "Selección Fusible"))
         return tab
 
     def _create_curva_tab(self):
@@ -915,8 +1010,8 @@ class MainWindow(QMainWindow):
         btn.setObjectName("primaryBtn")
         btn.clicked.connect(self._calc_curva)
         btn_row.addWidget(btn)
-        btn_row.addStretch()
         layout.addLayout(btn_row)
+        layout.addLayout(self._create_action_buttons("curva", "proteccion", "Curva Magnética"))
         return tab
 
     def _create_instalacion_page(self):
@@ -987,8 +1082,8 @@ class MainWindow(QMainWindow):
         btn.setObjectName("primaryBtn")
         btn.clicked.connect(self._calc_pot_inst)
         btn_row.addWidget(btn)
-        btn_row.addStretch()
         layout.addLayout(btn_row)
+        layout.addLayout(self._create_action_buttons("pot_inst", "instalacion", "Potencia Instalación"))
         return tab
 
     def _create_esquema_tab(self):
@@ -1019,8 +1114,8 @@ class MainWindow(QMainWindow):
         btn.setObjectName("primaryBtn")
         btn.clicked.connect(self._calc_esquema)
         btn_row.addWidget(btn)
-        btn_row.addStretch()
         layout.addLayout(btn_row)
+        layout.addLayout(self._create_action_buttons("esquema", "instalacion", "Esquema Protección"))
         return tab
 
     def _create_selectividad_tab(self):
@@ -1051,8 +1146,8 @@ class MainWindow(QMainWindow):
         btn.setObjectName("primaryBtn")
         btn.clicked.connect(self._calc_selectividad)
         btn_row.addWidget(btn)
-        btn_row.addStretch()
         layout.addLayout(btn_row)
+        layout.addLayout(self._create_action_buttons("selectividad", "instalacion", "Selectividad"))
         return tab
 
     def _create_telecom_page(self):
@@ -1112,8 +1207,8 @@ class MainWindow(QMainWindow):
         btn.setObjectName("primaryBtn")
         btn.clicked.connect(self._calc_enlace)
         btn_row.addWidget(btn)
-        btn_row.addStretch()
         layout.addLayout(btn_row)
+        layout.addLayout(self._create_action_buttons("enlace", "telecom", "Enlace Inalámbrico"))
         return tab
 
     def _create_fibra_tab(self):
@@ -1144,8 +1239,8 @@ class MainWindow(QMainWindow):
         btn.setObjectName("primaryBtn")
         btn.clicked.connect(self._calc_fibra)
         btn_row.addWidget(btn)
-        btn_row.addStretch()
         layout.addLayout(btn_row)
+        layout.addLayout(self._create_action_buttons("fibra", "telecom", "Fibra Óptica"))
         return tab
 
     def _create_red_tab(self):
@@ -1176,8 +1271,8 @@ class MainWindow(QMainWindow):
         btn.setObjectName("primaryBtn")
         btn.clicked.connect(self._calc_cable_red)
         btn_row.addWidget(btn)
-        btn_row.addStretch()
         layout.addLayout(btn_row)
+        layout.addLayout(self._create_action_buttons("cable_red", "telecom", "Cable de Red"))
         return tab
 
     def _create_wifi_tab(self):
@@ -1209,8 +1304,8 @@ class MainWindow(QMainWindow):
         btn.setObjectName("primaryBtn")
         btn.clicked.connect(self._calc_wifi)
         btn_row.addWidget(btn)
-        btn_row.addStretch()
         layout.addLayout(btn_row)
+        layout.addLayout(self._create_action_buttons("wifi", "telecom", "WiFi"))
         return tab
 
     def _create_distancia_page(self):
@@ -1280,8 +1375,8 @@ class MainWindow(QMainWindow):
         btn.setObjectName("primaryBtn")
         btn.clicked.connect(self._calc_distancia)
         btn_row.addWidget(btn)
-        btn_row.addStretch()
         layout.addLayout(btn_row)
+        layout.addLayout(self._create_action_buttons("distancia", "distancia", "Distancia entre Puntos"))
         return tab
 
     def _create_zona_postes_tab(self):
@@ -1314,8 +1409,8 @@ class MainWindow(QMainWindow):
         btn.setObjectName("primaryBtn")
         btn.clicked.connect(self._calc_zona_postes)
         btn_row.addWidget(btn)
-        btn_row.addStretch()
         layout.addLayout(btn_row)
+        layout.addLayout(self._create_action_buttons("zona_postes", "distancia", "Zona de Postes"))
         return tab
 
     def _create_linea_larga_tab(self):
@@ -1367,8 +1462,8 @@ class MainWindow(QMainWindow):
         btn.setObjectName("primaryBtn")
         btn.clicked.connect(self._calc_linea_larga)
         btn_row.addWidget(btn)
-        btn_row.addStretch()
         layout.addLayout(btn_row)
+        layout.addLayout(self._create_action_buttons("linea_larga", "distancia", "Línea Larga"))
         return tab
 
     def _create_informe_page(self):
@@ -1466,7 +1561,7 @@ class MainWindow(QMainWindow):
     def _show_about(self):
         QMessageBox.about(
             self, "Acerca de Electricitron",
-            "<h2>⚡ Electricitron v1.1.3</h2>"
+            "<h2>⚡ Electricitron v1.2.0</h2>"
             "<p>Software profesional de cálculos eléctricos y telecomunicaciones.</p>"
             "<p>Incluye: cálculos básicos, <b>sección automática de cables según REBT/IEC</b>, protecciones, "
             "instalaciones, telecomunicaciones y cálculo de distancias.</p>"
@@ -1477,7 +1572,7 @@ class MainWindow(QMainWindow):
 
     def _update_status(self, msg):
         self.status_label.setText(msg)
-        self.footer_label.setText(f"Electricitron v1.1.3 | {msg}")
+        self.footer_label.setText(f"Electricitron v1.2.0 | {msg}")
 
     # ============ CÁLCULOS ============
 
@@ -1498,6 +1593,7 @@ class MainWindow(QMainWindow):
                 self.ohm_result.add_result(k.title(), val)
             self.store.add("basico", "Ley de Ohm",
                            {"V": v, "I": i, "R": r}, result)
+            self._last_calc["ohm"] = {"title": "Ley de Ohm", "category": "basico", "params": {"V": v, "I": i, "R": r}, "results": result}
             self._update_status("Cálculo de Ley de Ohm realizado")
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
@@ -1599,6 +1695,11 @@ class MainWindow(QMainWindow):
                     "cumple_normativa": verif.get("cumple", False),
                 },
             )
+            self._last_calc["auto_cable"] = {
+                "title": "Sección Automática", "category": "cable",
+                "params": {"intensidad_A": intensidad, "longitud_m": longitud, "voltaje_V": voltaje, "material": material},
+                "results": {"seccion_recomendada_mm2": verif.get("seccion", "N/D"), "cumple_normativa": verif.get("cumple", False)},
+            }
             self._update_status("Cálculo de sección automática completado")
 
         except Exception as e:
@@ -1621,6 +1722,7 @@ class MainWindow(QMainWindow):
             self.store.add("basico", "Potencia",
                            {"V": v, "I": i, "FP": fp, "Tipo": ["DC", "Monofásica", "Trifásica"][tipo]},
                            {"potencia_w": p})
+            self._last_calc["potencia"] = {"title": "Potencia", "category": "basico", "params": {"V": v, "I": i, "FP": fp}, "results": {"potencia_w": p}}
             self._update_status("Cálculo de potencia realizado")
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
@@ -1634,6 +1736,7 @@ class MainWindow(QMainWindow):
             self.ener_result.add_result("Energía", f"{e} kWh")
             self.store.add("basico", "Energía",
                            {"P": p, "t": t}, {"energia_kwh": e})
+            self._last_calc["energia"] = {"title": "Energía", "category": "basico", "params": {"P": p, "t": t}, "results": {"energia_kwh": e}}
             self._update_status("Cálculo de energía realizado")
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
@@ -1650,6 +1753,7 @@ class MainWindow(QMainWindow):
                 self.imp_result.add_result(k.replace("_", " ").title(), val)
             self.store.add("basico", "Impedancia",
                            {"R": r, "L": l, "C": c, "f": f}, result)
+            self._last_calc["impedancia"] = {"title": "Impedancia", "category": "basico", "params": {"R": r, "L": l, "C": c, "f": f}, "results": result}
             self._update_status("Cálculo de impedancia realizado")
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
@@ -1664,6 +1768,7 @@ class MainWindow(QMainWindow):
                 self.sec_result.add_result(k.replace("_", " ").title(), val)
             self.store.add("cable", "Sección por Corriente",
                            {"corriente": i, "tipo": tipo}, result)
+            self._last_calc["seccion"] = {"title": "Sección por Corriente", "category": "cable", "params": {"corriente": i, "tipo": tipo}, "results": result}
             self._update_status("Selección de sección realizada")
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
@@ -1682,6 +1787,7 @@ class MainWindow(QMainWindow):
                 self.caida_result.add_result(k.replace("_", " ").title(), val)
             self.store.add("cable", "Caída de Tensión",
                            {"V": v, "I": i, "L": l, "S": s, "tipo": tipo, "trifasico": trifasico}, result)
+            self._last_calc["caida"] = {"title": "Caída de Tensión", "category": "cable", "params": {"V": v, "I": i, "L": l, "S": s}, "results": result}
             self._update_status("Cálculo de caída de tensión realizado")
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
@@ -1694,6 +1800,11 @@ class MainWindow(QMainWindow):
             for i, row in enumerate(tabla):
                 self.tabla_cables.setItem(i, 0, QTableWidgetItem(str(row["seccion_mm2"])))
                 self.tabla_cables.setItem(i, 1, QTableWidgetItem(str(row["ampacidad_a"])))
+            self._last_calc["tabla"] = {
+                "title": "Tabla de Secciones", "category": "cable",
+                "params": {"tipo": tipo},
+                "results": {f"{r['seccion_mm2']} mm²": f"{r['ampacidad_a']} A" for r in tabla},
+            }
             self._update_status(f"Tabla de {tipo} cargada")
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
@@ -1708,6 +1819,7 @@ class MainWindow(QMainWindow):
                 self.prot_result.add_result(k.replace("_", " ").title(), val)
             self.store.add("proteccion", "Selección Interruptor",
                            {"corriente": i, "curva": curva}, result)
+            self._last_calc["interrup"] = {"title": "Selección Interruptor", "category": "proteccion", "params": {"corriente": i, "curva": curva}, "results": result}
             self._update_status("Selección de interruptor realizada")
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
@@ -1722,6 +1834,7 @@ class MainWindow(QMainWindow):
                 self.diff_result.add_result(k.replace("_", " ").title(), val)
             self.store.add("proteccion", "Selección Diferencial",
                            {"corriente": i, "sensibilidad": sens}, result)
+            self._last_calc["diferencial"] = {"title": "Selección Diferencial", "category": "proteccion", "params": {"corriente": i, "sensibilidad": sens}, "results": result}
             self._update_status("Selección de diferencial realizada")
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
@@ -1736,6 +1849,7 @@ class MainWindow(QMainWindow):
                 self.fus_result.add_result(k.replace("_", " ").title(), val)
             self.store.add("proteccion", "Selección Fusible",
                            {"corriente": i, "tipo": tipo}, result)
+            self._last_calc["fusible"] = {"title": "Selección Fusible", "category": "proteccion", "params": {"corriente": i, "tipo": tipo}, "results": result}
             self._update_status("Selección de fusible realizada")
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
@@ -1751,6 +1865,7 @@ class MainWindow(QMainWindow):
                     self.curva_result.add_result(k.replace("_", " ").title(), val)
             self.store.add("proteccion", "Curva Magnética",
                            {"In": in_val, "curva": curva}, result)
+            self._last_calc["curva"] = {"title": "Curva Magnética", "category": "proteccion", "params": {"In": in_val, "curva": curva}, "results": result}
             self._update_status("Cálculo de curva magnética realizado")
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
@@ -1790,6 +1905,7 @@ class MainWindow(QMainWindow):
                 self.inst_result.add_result(k.replace("_", " ").title(), val)
             self.store.add("instalacion", "Potencia Instalación",
                            {"num_cargas": len(cargas)}, result)
+            self._last_calc["pot_inst"] = {"title": "Potencia Instalación", "category": "instalacion", "params": {"num_cargas": len(cargas)}, "results": result}
             self._update_status("Cálculo de potencia de instalación realizado")
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
@@ -1807,6 +1923,7 @@ class MainWindow(QMainWindow):
                     self.esq_result.add_result(k.replace("_", " ").title(), val)
             self.store.add("instalacion", "Esquema Protección",
                            {"sistema": tipo, "tension": tension}, result)
+            self._last_calc["esquema"] = {"title": "Esquema Protección", "category": "instalacion", "params": {"sistema": tipo, "tension": tension}, "results": result}
             self._update_status("Esquema de protección generado")
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
@@ -1821,6 +1938,7 @@ class MainWindow(QMainWindow):
                 self.sel_result.add_result(k.replace("_", " ").title(), val)
             self.store.add("instalacion", "Selectividad",
                            {"In_sup": sup, "In_inf": inf}, result)
+            self._last_calc["selectividad"] = {"title": "Selectividad", "category": "instalacion", "params": {"In_sup": sup, "In_inf": inf}, "results": result}
             self._update_status("Verificación de selectividad realizada")
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
@@ -1836,6 +1954,7 @@ class MainWindow(QMainWindow):
                 self.enl_result.add_result(k.replace("_", " ").title(), val)
             self.store.add("telecom", "Enlace Inalámbrico",
                            {"distancia_km": d, "frecuencia_ghz": f, "lluvia_dbkm": ll}, result)
+            self._last_calc["enlace"] = {"title": "Enlace Inalámbrico", "category": "telecom", "params": {"distancia_km": d, "frecuencia_ghz": f}, "results": result}
             self._update_status("Cálculo de enlace inalámbrico realizado")
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
@@ -1850,6 +1969,7 @@ class MainWindow(QMainWindow):
                 self.fib_result.add_result(k.replace("_", " ").title(), val)
             self.store.add("telecom", "Fibra Óptica",
                            {"tipo": tipo, "distancia_km": dist}, result)
+            self._last_calc["fibra"] = {"title": "Fibra Óptica", "category": "telecom", "params": {"tipo": tipo, "distancia_km": dist}, "results": result}
             self._update_status("Cálculo de fibra óptica realizado")
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
@@ -1864,6 +1984,7 @@ class MainWindow(QMainWindow):
                 self.red_result.add_result(k.replace("_", " ").title(), val)
             self.store.add("telecom", "Cable de Red",
                            {"longitud": long, "tipo": tipo}, result)
+            self._last_calc["cable_red"] = {"title": "Cable de Red", "category": "telecom", "params": {"longitud": long, "tipo": tipo}, "results": result}
             self._update_status("Cálculo de cable de red realizado")
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
@@ -1878,6 +1999,7 @@ class MainWindow(QMainWindow):
                 self.wifi_result.add_result(k.replace("_", " ").title(), val)
             self.store.add("telecom", "WiFi",
                            {"dispositivos": n, "ancho_banda": bw}, result)
+            self._last_calc["wifi"] = {"title": "WiFi", "category": "telecom", "params": {"dispositivos": n, "ancho_banda": bw}, "results": result}
             self._update_status("Cálculo WiFi realizado")
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
@@ -1892,6 +2014,7 @@ class MainWindow(QMainWindow):
                 self.dist_result.add_result(k.replace("_", " ").title(), val)
             self.store.add("distancia", "Distancia entre Puntos",
                            {"punto_a": a, "punto_b": b}, result)
+            self._last_calc["distancia"] = {"title": "Distancia entre Puntos", "category": "distancia", "params": {"punto_a": a, "punto_b": b}, "results": result}
             self._update_status("Cálculo de distancia realizado")
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
@@ -1906,6 +2029,7 @@ class MainWindow(QMainWindow):
                 self.zp_result.add_result(k.replace("_", " ").title(), val)
             self.store.add("distancia", "Zona de Postes",
                            {"distancia_total": d, "separacion": s}, result)
+            self._last_calc["zona_postes"] = {"title": "Zona de Postes", "category": "distancia", "params": {"distancia_total": d, "separacion": s}, "results": result}
             self._update_status("Cálculo de zona de postes realizado")
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
@@ -1923,6 +2047,7 @@ class MainWindow(QMainWindow):
                 self.ll_result.add_result(k.replace("_", " ").title(), val)
             self.store.add("distancia", "Línea Larga",
                            {"V": v, "I": i, "R": r, "L": l, "trifasico": trifasico}, result)
+            self._last_calc["linea_larga"] = {"title": "Línea Larga", "category": "distancia", "params": {"V": v, "I": i, "R": r, "L": l}, "results": result}
             self._update_status("Cálculo de línea larga realizado")
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))

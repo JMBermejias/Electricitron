@@ -447,6 +447,52 @@ QFrame#resultCard:hover {
     background-color: #fafcff;
 }
 
+/* ===== ACTION BUTTONS (Guardar/PDF/Excel) ===== */
+QPushButton#saveBtn {
+    background-color: #e65100;
+    color: #ffffff;
+    border: 2px solid #bf360c;
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    min-height: 28px;
+}
+
+QPushButton#saveBtn:hover {
+    background-color: #f57c00;
+}
+
+QPushButton#pdfBtn {
+    background-color: #c62828;
+    color: #ffffff;
+    border: 2px solid #b71c1c;
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    min-height: 28px;
+}
+
+QPushButton#pdfBtn:hover {
+    background-color: #e53935;
+}
+
+QPushButton#excelBtn {
+    background-color: #1b5e20;
+    color: #ffffff;
+    border: 2px solid #1b5e20;
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    min-height: 28px;
+}
+
+QPushButton#excelBtn:hover {
+    background-color: #2e7d32;
+}
+
 /* ===== SEPARATOR ===== */
 QFrame#separator {
     background-color: #e0e0e0;
